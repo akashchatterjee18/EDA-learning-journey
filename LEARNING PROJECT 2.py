@@ -3,11 +3,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import warnings
+
 warnings.filterwarnings('ignore')
+
+
 df = pd.read_csv('heart.csv')
 print(df)
 
 # EDA
+
+# analysis
 print(df.columns)
 print(df.shape)
 print(df.info())
