@@ -19,8 +19,8 @@ print(df.info())
 print(df.describe())
 print(df.duplicated().sum())                    # returns no of duplicate values
 print(df['HeartDisease'].value_counts())        # returns no of people with and withour heart diesease
-#df['HeartDisease'].value_counts().plot(kind = 'bar')       # to plot the value
-#plt.show()
+df['HeartDisease'].value_counts().plot(kind = 'bar')       # to plot the value
+plt.show()
 
 print(df.isnull().sum())
 
