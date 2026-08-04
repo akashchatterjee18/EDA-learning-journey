@@ -50,7 +50,7 @@ def convert_money(x):
 df['Value'] = df['Value'].apply(convert_money)
 df['Wage'] = df['Wage'].apply(convert_money)
 
-
+"""
 def plotting(var,num):
     plt.subplot(2,2,num)
     sns.histplot(df[var],kde = True)
@@ -61,7 +61,7 @@ plotting('Overall',2)
 plotting('Wage',3)
 plotting('Value',4)
 plt.show()
-
+"""
 df['Elite'] = (df['Overall'] >= 90).astype(int)     # Feature Engineering
 
 print(df[df['Elite'] == 1]['Name'])
@@ -189,33 +189,87 @@ for feature in selected_features:
     plt.show()
 """
 
-correlation = df[selected_features + ['Value']].corr()['Value'].sort_values(ascending=False)
-print(correlation)
+# Pearson Correlation
+from scipy.stats import pearsonr
 
-for feature in selected_features:
-    correlation = df[feature].corr(df['Value'])
-    print(f"{feature}: {correlation:.4f}")
+# List of features to check against target
+correlations = {
+    feature: pearsonr(df[feature], df['Value'])[0]
+    for feature in selected_features
+}
 
-# dropping features where correlation is nan
-nan_features = []
+correlation_df = pd.DataFrame(
+    list(correlations.items()),
+    columns=['Feature', 'Pearson Correlation']
+)
 
-for feature in selected_features:
-    corr = df[feature].corr(df['Value'])
+print(correlation_df.sort_values(by='Pearson Correlation', ascending=False))
 
-    if pd.isna(corr):
-        nan_features.append(feature)
 
-print(nan_features)
+# Dropping numerical features
+drop_features = correlation_df[
+    abs(correlation_df['Pearson Correlation']) < 0.10
+]['Feature'].tolist()
 
-df.drop(columns=nan_features, inplace=True)
-selected_features = [col for col in selected_features if col not in nan_features]
+print(drop_features)
 
+df.drop(columns=drop_features, inplace=True)
+
+"""chi square test"""
+
+preferred_position = [
+    feature for feature in preferred_position
+    if feature in df.columns
+]
+
+cat_features = ['Elite', 'Nationality', 'Club'] + preferred_position
+
+from scipy.stats import chi2_contingency
+alpha = 0.05
+
+df['Value_bin'] = pd.qcut(df['Value'], q=4, labels=False)
+chi2_results = {}
+
+for col in cat_features:
+    contingency = pd.crosstab(df[col], df['Value_bin'])
+    chi2_stat, p_val, _, _ = chi2_contingency(contingency)
+    decision = 'Reject Null (Keep Feature)' if p_val < alpha else 'Accept Null (Drop Feature)'
+
+    chi2_results[col] = {
+        'chi2_statistic': chi2_stat,
+        'p_value': p_val,
+        'Decision': decision
+    }
+
+chi2_df = pd.DataFrame(chi2_results).T
+chi2_df = chi2_df.sort_values(by='p_value')
+
+print(chi2_df)
+
+## Droping categorical features
+drop_cat = chi2_df[
+    chi2_df['Decision'] == 'Accept Null (Drop Feature)'
+].index.tolist()
+
+print(drop_cat)
+
+df.drop(columns=drop_cat, inplace=True)
+df.drop(columns='Value_bin', inplace=True)
+
+selected_features = [
+    col for col in selected_features
+    if col in df.columns
+]
 # scaling
 from sklearn.preprocessing import StandardScaler
-cols=selected_features
+
+cols = [
+    col for col in selected_features
+    if df[col].nunique() > 2
+]
+
 scaler = StandardScaler()
 df[cols]=scaler.fit_transform(df[cols])
-print(df.head())
 
 final_df = df.copy()
-
+print(final_df.head())
